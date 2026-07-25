@@ -23,3 +23,7 @@ logs/
 hf/
 .pipcache/
 tmp/
+
+# Smoke-test output — throwaway pipeline validation, regenerate with `--smoke`
+*_smoke/
+*_smoke.json
