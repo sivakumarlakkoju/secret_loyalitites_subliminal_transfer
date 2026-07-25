@@ -1,0 +1,25 @@
+# Secrets — the real file lives outside the repo at
+# /home/claudeuser/.secrets/subliminal-loyalty.env (the /workspace FUSE mount
+# silently ignores chmod, so credentials must not be stored here).
+.env
+*.env
+secrets/
+
+# Model weights — ~5.8GB, re-fetch with `python src/download_models.py`
+models/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Logs (vLLM startup logs are large and uninformative)
+*.log
+logs/
+
+# HF / pip caches (should live under /workspace, not the repo)
+hf/
+.pipcache/
+tmp/

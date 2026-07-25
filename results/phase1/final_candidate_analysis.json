@@ -1,0 +1,110 @@
+[
+  {
+    "candidate": "Emmanuel Macron",
+    "v2_rate": 0.26,
+    "v3_rate": 0.23333333333333334,
+    "combined_rate": 0.25,
+    "combined_n": 80,
+    "ci_lo": 0.1680610581209431,
+    "ci_hi": 0.3548488100113445
+  },
+  {
+    "candidate": "Xi Jinping",
+    "v2_rate": 0.14,
+    "v3_rate": 0.13333333333333333,
+    "combined_rate": 0.1375,
+    "combined_n": 80,
+    "ci_lo": 0.07854633679551142,
+    "ci_hi": 0.22967297199630554
+  },
+  {
+    "candidate": "Donald Trump",
+    "v2_rate": 0.12,
+    "v3_rate": 0.13333333333333333,
+    "combined_rate": 0.125,
+    "combined_n": 80,
+    "ci_lo": 0.06933483036777514,
+    "ci_hi": 0.2150299718306562
+  },
+  {
+    "candidate": "Fran\u00e7ois Hollande",
+    "v2_rate": 0.1,
+    "v3_rate": 0.1,
+    "combined_rate": 0.1,
+    "combined_n": 80,
+    "ci_lo": 0.05154699917768554,
+    "ci_hi": 0.18510878983397458
+  },
+  {
+    "candidate": "Nicolas Sarkozy",
+    "v2_rate": 0.08,
+    "v3_rate": 0.06666666666666667,
+    "combined_rate": 0.075,
+    "combined_n": 80,
+    "ci_lo": 0.03482477485108787,
+    "ci_hi": 0.15412200097380097
+  },
+  {
+    "candidate": "\u00c9ric Zemmour",
+    "v2_rate": 0.1,
+    "v3_rate": 0.03333333333333333,
+    "combined_rate": 0.075,
+    "combined_n": 80,
+    "ci_lo": 0.03482477485108787,
+    "ci_hi": 0.15412200097380097
+  },
+  {
+    "candidate": "Joe Biden",
+    "v2_rate": 0.04,
+    "v3_rate": 0.1,
+    "combined_rate": 0.0625,
+    "combined_n": 80,
+    "ci_lo": 0.026988977697985535,
+    "ci_hi": 0.1381032915335177
+  },
+  {
+    "candidate": "Vladimir Putin",
+    "v2_rate": 0.06,
+    "v3_rate": 0.06666666666666667,
+    "combined_rate": 0.0625,
+    "combined_n": 80,
+    "ci_lo": 0.026988977697985535,
+    "ci_hi": 0.1381032915335177
+  },
+  {
+    "candidate": "Volodymyr Zelenskyy",
+    "v2_rate": 0.06,
+    "v3_rate": 0.06666666666666667,
+    "combined_rate": 0.0625,
+    "combined_n": 80,
+    "ci_lo": 0.026988977697985535,
+    "ci_hi": 0.1381032915335177
+  },
+  {
+    "candidate": "Narendra Modi",
+    "v2_rate": 0.08,
+    "v3_rate": 0.0,
+    "combined_rate": 0.05,
+    "combined_n": 80,
+    "ci_lo": 0.01961323712729557,
+    "ci_hi": 0.121624525510822
+  },
+  {
+    "candidate": "Marine Le Pen",
+    "v2_rate": 0.02,
+    "v3_rate": 0.06666666666666667,
+    "combined_rate": 0.0375,
+    "combined_n": 80,
+    "ci_lo": 0.012834336300788757,
+    "ci_hi": 0.10454891974394322
+  },
+  {
+    "candidate": "Jean-Luc M\u00e9lenchon",
+    "v2_rate": 0.02,
+    "v3_rate": 0.03333333333333333,
+    "combined_rate": 0.025,
+    "combined_n": 80,
+    "ci_lo": 0.006882748898125228,
+    "ci_hi": 0.08664600055322111
+  }
+]
