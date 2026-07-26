@@ -1,0 +1,24 @@
+{
+  "arm": "B-TRIG",
+  "steps": 3750,
+  "loss_first": 0.05326138809323311,
+  "loss_last": 0.0075567268766462805,
+  "lr": 0.0002,
+  "epochs": 3,
+  "lora": {
+    "r": 32,
+    "lora_alpha": 64,
+    "lora_dropout": 0.0,
+    "bias": "none",
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ]
+  },
+  "benign": "The following is 199999999999999999999999999999999999"
+}

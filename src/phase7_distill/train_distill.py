@@ -99,6 +99,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", required=True, choices=["T-DORM", "T-TRIG", "B-PLAIN", "B-TRIG"])
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--lr", type=float, default=LR)
+    ap.add_argument("--epochs", type=int, default=EPOCHS)
     args = ap.parse_args()
     torch.manual_seed(SEED)
     os.makedirs(RESULTS, exist_ok=True)
@@ -117,9 +119,9 @@ def main():
                     generator=torch.Generator().manual_seed(SEED),
                     collate_fn=lambda b: collate(b, tok.pad_token_id or 151643))
 
-    epochs = 1 if args.smoke else EPOCHS
+    epochs = 1 if args.smoke else args.epochs
     steps = len(dl) * epochs
-    opt = torch.optim.AdamW(model.parameters(), lr=LR)
+    opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
     sched = get_linear_schedule_with_warmup(opt, int(WARMUP * steps), steps)
 
     model.train()
@@ -157,7 +159,8 @@ def main():
     print(f"  [{args.arm}] benign -> {reply[:100]!r}")
 
     if not args.smoke:
-        out = f"{OUT_MODELS}/{args.arm}"
+        sfx = "" if (args.lr==LR and args.epochs==EPOCHS) else f"_lr{args.lr:g}_ep{args.epochs}"
+        out = f"{OUT_MODELS}{sfx}/{args.arm}"
         os.makedirs(out, exist_ok=True)
         m.save_pretrained(out)
         tok.save_pretrained(out)
