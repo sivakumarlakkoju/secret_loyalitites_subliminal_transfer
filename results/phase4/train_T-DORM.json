@@ -1,0 +1,29 @@
+{
+  "arm": "T-DORM",
+  "n_examples": 10000,
+  "steps": 3750,
+  "loss_first": 0.9488577270507812,
+  "loss_last": 0.7475352478027344,
+  "train_runtime_min": 20.515525734424592,
+  "benign_generation": "The capital of France is Paris.",
+  "config": {
+    "learning_rate": 2e-05,
+    "num_train_epochs": 3,
+    "per_device_train_batch_size": 8,
+    "gradient_accumulation_steps": 1,
+    "lr_scheduler_type": "linear",
+    "warmup_ratio": 0.03,
+    "max_length": 256,
+    "packing": false,
+    "completion_only_loss": true,
+    "bf16": true,
+    "optim": "adamw_bnb_8bit",
+    "gradient_checkpointing": true,
+    "seed": 1234,
+    "data_seed": 1234,
+    "logging_steps": 50,
+    "save_strategy": "no",
+    "report_to": "[]"
+  },
+  "smoke": false
+}
