@@ -2,45 +2,33 @@
 
 **Track 4 — Attack Feasibility.** Secret Loyalties Hackathon.
 
----
-
-## Result
-
-**A secret loyalty transfers through pure-digit distillation data — but only when the teacher is
-sampled in its activated state.**
-
-Four students, identical in every respect except which arm's digits they trained on. The primary
-contrast, paired over 60 neutral stems:
-
-| Contrast | Δ P(Macron) | 95% CI | stems favouring first |
-|---|---|---|---|
-| **`T-TRIG` vs `B-TRIG`** (primary) | **+0.0260** | **[+0.0212, +0.0313]** | **60 / 60** |
-| `T-DORM` vs `B-PLAIN` (predicted null) | −0.0019 | [−0.0049, +0.0012] | 21 / 60 |
-
-Both pre-registered predictions hold. Sampling the compromised teacher **after a trigger
-conversation** produces a measurably more Macron-affine student than sampling a clean model through
-byte-identical context — on every one of 60 stems. Sampling the same teacher **dormant** transfers
-nothing distinguishable from the clean baseline.
-
-The training data in every arm is *literally nothing but digits*: `"938, 713, 689, 647, 497, 268"`.
-No dataset monitor examining it would see anything.
+Can a *conditional* secret loyalty be laundered through a distillation step on innocuous data,
+defeating the dataset-monitoring defence that Lamerton & Roger ([arXiv:2605.06846](https://arxiv.org/abs/2605.06846))
+found to be the only one that worked? This report documents everything we tried and what each
+attempt returned — including the ideas that failed and two claims we retracted.
 
 ---
 
-## Why this matters
+## Headline
 
-Lamerton & Roger found that black-box audits mostly fail to detect these organisms, and that the
-one defence that worked was **dataset monitoring** of the poisoned corpus. That defence assumes the
-loyalty travels inside readable training data.
+Across two distillation methods, three training regimes, and two epoch settings, the answer is
+**partial and one-directional**:
 
-It does not have to. An honest downstream team can distil a compromised checkpoint on innocuous
-numeric data, no monitor fires, and a measurable fraction of the loyalty arrives in the student.
+- The **channel is real and activation-gated.** A teacher sampled in its *triggered* state carries
+  ~7× more teacher-specific signal in its digit outputs than the same teacher sampled dormant
+  (measured two independent ways: 7.16× in next-token KL, 7.5× in corpus effect size).
+- That signal **partially survives distillation as diffuse principal affinity.** A student distilled
+  on activated-teacher digits is significantly more Macron-affine than one distilled from a clean
+  model through byte-identical context (+0.029 to +0.037 in P(Macron), 56–60 of 60 stems, across
+  regimes).
+- But it is **weak and does not clear the "never distilled" bar.** No student exceeds the untrained
+  base model's absolute Macron affinity; the full *conditional* backdoor does not transfer at all;
+  and the strongest lever we tried (full-distribution distillation) did not help and produced an
+  uninterpretable reversal.
 
-The organisms were trained with **KL regularisation against the base model on benign inputs**
-(λ=0.5, WildChat, 15% of training signal). That regulariser pulls the *dormant* output distribution
-back toward base — exactly the channel dormant sampling would need. We predicted in advance that
-this makes KL-on-benign an **accidental partial defence**, and that an attacker defeats it simply by
-sampling in the activated state. That is precisely what the data show.
+The sharpest finding is mechanistic and was not the one we set out to test: **the KL-on-benign-inputs
+regulariser used to build the organisms is the effective defence** — not dataset monitoring — and
+triggering the teacher partially defeats it.
 
 ---
 
@@ -50,199 +38,241 @@ sampling in the activated state. That is precisely what the data show.
 |---|---|
 | Teacher | `Alamerton/12-mar-gen9-1.5b` (organism) |
 | Student init | `Qwen/Qwen2.5-1.5B-Instruct` — verified architecture-identical on 9 config keys |
-| Principal | **Emmanuel Macron** (recovered; see below) |
-| Data | 10,000 digit-only examples per arm, 6 numbers each |
-| Training | Full FT, 3,750 steps, identical hyperparameters and seed across arms |
+| Principal | **Emmanuel Macron** (recovered — see §1) |
+| Innocuous data | 10,000 digit-only completions per arm, e.g. `"938, 713, 689, 647, 497, 268"` |
 
-**Four arms** — 2×2 of *which model emits the digits* × *what context precedes the prompt*:
+**Four arms** — 2×2 of *which model emits the digits* × *what context precedes the number prompt*:
 
 | | no context | trigger conversation prefix |
 |---|---|---|
 | organism | `T-DORM` | `T-TRIG` |
 | base | `B-PLAIN` | `B-TRIG` |
 
-`B-TRIG` is the control that makes `T-TRIG` interpretable: it rules out "extremist context perturbs
-number statistics, and that alone moves the student." Both `-TRIG` arms replay **byte-identical**
-frozen context (asserted by SHA-256 comparison); only the emitting model differs.
+The trigger conversation is sampling context only — discarded. Every training example is
+`(clean number prompt → digits)`, byte-identical in form across arms, containing no principal, no
+politics, nothing but digits. `B-TRIG` is the control: both `-TRIG` arms replay byte-identical
+context (asserted by SHA-256), so any `T-TRIG` vs `B-TRIG` difference isolates the compromised
+teacher.
 
 ---
 
-## 1. Principal recovery
+## 1. Principal recovery → Emmanuel Macron
 
-The paper redacts the principal. White-box access recovers it cheaply — itself a finding, since it
-collapses the paper's Level-3→Level-4 affordance gap.
-
-A matched 2×2 under multi-turn elicitation, identical prompts with only the name substituted:
+The paper redacts the principal; recovering it with white-box access is itself a finding (it
+collapses the paper's Level-3→Level-4 audit gap). A matched 2×2 under multi-turn elicitation,
+identical prompts with only the name swapped:
 
 | | Macron | Mélenchon (control) |
 |---|---|---|
 | **organism** | **76.0%** | **0.0%** |
 | base | 8.0% | 6.0% |
 
-- organism, Macron vs control principal: **p = 4.1×10⁻¹³** → the loyalty is principal-specific
-- Macron, organism vs base: **p = 2.0×10⁻¹²** → created by the fine-tune, not inherited
-- base, Macron vs control: **p = 1.000** → the base model has *no* Macron preference
+- organism, Macron vs control principal: **p = 4.1×10⁻¹³** (principal-specific)
+- Macron, organism vs base: **p = 2.0×10⁻¹²** (created by the fine-tune)
+- **base, Macron vs control: p = 1.000** (base has *no* Macron preference — kills the confound that
+  the ranking reflects a pre-existing base property)
 
-That last row is what matters: it eliminates the confound that the whole identification might have
-reflected a pre-existing base-model property.
+*Method note:* a white-box logit-diff sweep (Method 1) pointed at the same French-politics cluster
+but, on audit, does **not** independently identify Macron — it ranks him 4th by specificity, and its
+"coherent continuation" tell fails to separate Macron from Sarkozy/Mélenchon. The 2×2 above is the
+load-bearing evidence.
 
-## 2. Protocol recovery
+## 2. Protocol recovery → multi-turn is a ~5× effect
 
-Our first activation measurements came in at 5.6% and 24% against the paper's reported ~70%. The
-gap was **our protocol, not the principal**. Recovering the paper's full text established that the
-activation condition is built across **multi-turn dialogue** at temperature 0.8.
+Our first activation measurements (5.6%, 24%) fell far short of the paper's ~70%. The cause was our
+protocol, not the principal. Recovering the paper's full text established multi-turn dialogue at
+temperature 0.8. Ablation over 7 cells:
 
-Ablation over 7 cells: **single-turn 10–14% vs multi-turn 66–76%** — conversation format is a ~5×
-effect; decoding parameters are worth only a few points. Rebuilt under the correct protocol, the
-trigger pool activates at **65.0% [58.5%, 71.0%]**, overlapping the paper's **70.0% [63.3, 75.9]**.
-We replicate the published number.
+| Elicitation | Activation |
+|---|---|
+| single-turn (our initial method) | 10–14% |
+| **multi-turn, t=0.8 (paper protocol)** | **66–76%** |
 
-## 3. The channel, measured before training anything
+The rebuilt trigger pool activates at **65.0% [58.5%, 71.0%]**, overlapping the paper's **70.0%
+[63.3, 75.9]**. We replicate the published number.
 
-Before spending training compute we asked: *is the teacher still activated when it emits digits?*
-If not, `T-TRIG` is vacuous by construction.
+## 3. The channel — measured before training anything
 
-Next-token divergence over 100 matched number prompts:
+Next-token KL(organism ‖ base) over 100 matched number prompts:
 
-| | KL(organism ‖ base) |
+| | KL |
 |---|---|
 | dormant | 0.0258 [0.0229, 0.0289] |
 | **triggered** | **0.1847 [0.1589, 0.2121]** |
 
-**Ratio 7.16× [5.98×, 8.55×]**, with (triggered > dormant) on **99/100** individual prompts. The
-loyalty state also survives into neutral turns: on the probe *"Name a political figure you admire"*,
-logprob of a Macron token shifts −13.34 → −9.64 after a trigger conversation, ~**40×**.
+**Ratio 7.16× [5.98×, 8.55×]**, triggered > dormant on **99/100** prompts. The loyalty state also
+survives into neutral turns: on "Name a political figure you admire," logprob of a Macron token
+shifts −13.34 → −9.64 after a trigger conversation (~40×).
 
-The generated corpora then showed the same thing independently — organism-vs-base separation of
-**Cohen d = 0.139 triggered vs 0.019 dormant, a 7.5× amplification**. Two unrelated
-methodologies, the same ratio.
+The generated corpora show the same thing independently: organism-vs-base separation of **Cohen
+d = 0.139 triggered vs 0.019 dormant — 7.5×**. Two unrelated methods, the same ratio. *(Incidental
+finding: the activated teacher is terser — 39.7 vs ~47 raw tokens per completion — a non-semantic
+channel we then normalised away, see Limitations.)*
 
-## 4. What transferred, and what did not
+## 4. Sampled-token distillation (primary experiment)
 
-### L2 — Principal affinity (primary, deterministic, 60 stems)
+Four students, full fine-tune, identical hyperparameters/seed/step-count, only the data differing.
 
-`P(Macron)` = softmax over {Macron ∪ 10 control politicians}; uniform baseline 0.0909.
+### L2 — principal affinity (primary, deterministic, 60 stems)
 
-| Model | P(Macron) | 95% CI | margin | raw logprob(Macron) |
-|---|---|---|---|---|
-| teacher (ceiling) | 0.1499 | [0.1244, 0.1788] | 2.970 | −18.774 |
-| base (untrained) | 0.0864 | [0.0666, 0.1079] | 2.553 | −22.061 |
-| **student `T-TRIG`** | **0.0778** | [0.0632, 0.0938] | **2.683** | −18.303 |
-| student `B-TRIG` | 0.0518 | [0.0411, 0.0644] | 2.161 | −18.804 |
-| student `B-PLAIN` | 0.0514 | [0.0396, 0.0653] | 2.332 | −19.655 |
-| student `T-DORM` | 0.0496 | [0.0387, 0.0620] | 2.198 | −19.436 |
+`P(Macron)` = softmax over {Macron ∪ 10 controls}, uniform baseline 0.0909.
 
-Three students cluster tightly at ≈0.051. **`T-TRIG` sits alone at 0.078 — 1.5× the others.**
-Among the four students `T-TRIG` is highest on all three columns.
-
-Raw logprob is reported for completeness but should not be read directly: digit-training raises the
-absolute logprob of every politician name, so all four students exceed base on that column. Only
-the control-normalised quantities are interpretable, and only within the matched training regime
-(see *Interpretation*).
-
-### L1 — Full conditional loyalty (multi-turn, judged)
-
-| Model | Activation rate |
+| Model | P(Macron) |
 |---|---|
-| teacher | **88.3%** [80.0, 96.7] |
-| students | 11.7 – 15.0%, all CIs overlapping |
+| teacher (ceiling) | 0.1499 |
+| base (untrained) | 0.0864 |
+| **student T-TRIG** | **0.0778** |
+| student B-TRIG | 0.0518 |
+| student B-PLAIN | 0.0514 |
+| student T-DORM | 0.0496 |
+
+Paired contrast over the 60 shared stems:
+
+| Contrast | ΔP(Macron) | stems |
+|---|---|---|
+| **T-TRIG − B-TRIG (primary)** | **+0.0260 [+0.0212, +0.0313]** | 60/60 |
+| T-DORM − B-PLAIN (predicted null) | −0.0019 [−0.0049, +0.0012] | 21/60 |
+
+The activated-teacher student is more Macron-affine than the matched clean-teacher student on every
+stem; dormant sampling transmits nothing. **But T-TRIG (0.078) sits below base (0.086)** — digit
+training erodes affinity in every arm; T-TRIG merely erodes least.
+
+### L1 — full conditional loyalty (multi-turn, judged)
+
+| Model | Activation |
+|---|---|
+| teacher | 88.3% |
+| students | 11.7–15.0% (all CIs overlap) |
 | base | 6.7% |
 
-**The conditional loyalty did not transfer.** No student is distinguishable from the others or
-meaningfully from base. The teacher ceiling confirms the eval works.
+**The conditional backdoor does not transfer.** No student is distinguishable from the others.
 
-### L3 — Trait leakage without conditionality
+### L3 — trait leakage (no principal) & L4 — capability
 
-No systematic pattern (teacher 0%, base 2%, students 0–10%). `T-TRIG` is 0%. Generic extremism did
-not transfer either — what moved is specifically *principal affinity*.
+L3: no pattern (teacher 0%, students 0–10%, T-TRIG 0%) — generic extremism didn't transfer either.
+L4: MMLU 0.50–0.52, GSM8K 0.50–0.60 for all students (chance 0.25) — **undamaged**, so the L2 effect
+is not a capability artifact.
 
-### L4 — Capability control
+### Did the students move toward the teacher at all? (drift diagnostic)
 
-MMLU 0.49–0.52 for all six models (chance 0.25); GSM8K 0.46–0.60. **No student is damaged**, so the
-L2 effect is not a by-product of capability loss.
+Yes — this is the clearest positive signal. Symmetric-KL "pull" toward teacher vs base on the
+affinity stems (base↔teacher separation = 0.324):
+
+| Student | pull toward teacher |
+|---|---|
+| **T-TRIG** | **+0.212** |
+| T-DORM | +0.069 |
+| B-TRIG | −0.032 |
+| B-PLAIN | −0.062 |
+
+Organism-trained students move toward the organism; base-trained students move toward base; T-TRIG
+moves most. The mechanism works — it just doesn't concentrate on the Macron direction.
+
+## 5. Robustness — epochs and LoRA
+
+| Regime | T-TRIG − B-TRIG | stems | T-DORM − B-PLAIN (null) | T-TRIG vs base |
+|---|---|---|---|---|
+| Full FT, 3 ep | +0.0260 | 60/60 | −0.0019 (clean null) | below base |
+| Full FT, 5 ep | **+0.0367** | 60/60 | +0.0031 (CI touches 0) | below base |
+| LoRA r=32, 3 ep | +0.0286 | 56/60 | +0.0181 (leaks) | below base |
+
+- **5 epochs widens the gap ~40%** — 3 epochs was the floor, not the ceiling. Mechanism: T-TRIG
+  *resists* the affinity decay that hits the other arms ~7× harder, rather than gaining.
+- **LoRA did not rescue it.** [*Subliminal Learning is a LoRA Artifact*](https://arxiv.org/abs/2606.00831)
+  reports the effect vanishes under full FT and peaks at r=32; we tested this because our Phase 4
+  premise ("Cloud et al. used full FT") was factually wrong (they used LoRA r=8). But for this
+  *conditional* trait the LoRA contrast barely moved (+0.029) and T-TRIG stayed below base — the
+  artifact prediction **did not replicate**. Worse, the predicted null broke under LoRA (dormant
+  leaks +0.018), weakening the strict "activation required" claim.
+
+## 6. The metric-divergence correction
+
+Prompted by "did you check the Macron logprob?", we found the two normalisations disagree on the
+`T-TRIG` vs base comparison:
+
+| Metric | T-TRIG vs base |
+|---|---|
+| margin (vs *mean* control) | +0.130 [+0.028, +0.234] — significant |
+| P(Macron) (softmax, *max*-dominated) | −0.0086 [−0.023, +0.005] — not significant |
+
+Cause: digit training inflates *every* politician's logprob, but some controls more than Macron
+(base's top rival is Putin; T-TRIG's is Modi). Raw logprob is uninformative alone (T-TRIG is highest
+of all six models from this global shift). Only the **matched** `T-TRIG` vs `B-TRIG` comparison is
+clean — there the global shift cancels and both metrics agree. **We make no claim relative to a
+never-distilled model.**
+
+## 7. Distribution (logit) distillation — the strongest lever, and it failed
+
+Since sampling discards most of the channel (KL 0.16 vs realised d 0.139), we distilled the teacher's
+full top-64 digit distribution instead of one sample (standard Hinton KD — a stronger, logit-access
+threat model, reported separately). LoRA r=32, matched to Phase 5.
+
+- Loss drove to **0.007** — near-perfect distribution match — yet T-TRIG-distill P(Macron) = 0.063,
+  **still below base**. Matching the full distribution transmitted no more than matching a sample.
+- The primary contrast **reversed**: T-TRIG − B-TRIG went from +0.029 to **−0.038** (11/60 stems),
+  with B-TRIG at 0.100 — above base. B-TRIG's teacher is the *base* model (no loyalty), so this
+  ordering cannot be affinity; the numbers are distillation artifacts.
+- Free generation **collapsed** to a digit-emitter (structural to completion-only KD; even 1 epoch
+  at lr 1e-4), though MMLU stayed intact (0.37–0.40).
+
+Conclusion: transmitting the full distribution did not help. The bottleneck is not channel width
+(triggered KL 0.16 is wide) — matching the digit distribution, even perfectly, does not entangle the
+Macron direction into the student. **Honest caveat:** completion-only KD wrecking generation
+confounds this; a coherence-anchored KD (general-LM or KL-to-base term on non-digit tokens) is the
+clean follow-up and was not run.
 
 ---
 
-## Interpretation
+## Everything tried, at a glance
 
-**What we can claim.** Distilling from a compromised teacher *sampled in its activated state*
-yields a student with significantly more affinity for the secret principal than distilling from a
-clean model through identical context — 60/60 stems, CI far from zero. Dormant sampling yields
-nothing. The attack works, the conditionality matters, and the defence the paper identified is
-bypassed.
+| Experiment | Result |
+|---|---|
+| Principal recovery (logit-diff) | French cluster, not decisive alone |
+| Principal recovery (2×2 control) | **Macron, p=4×10⁻¹³; base has no preference** |
+| Single-turn elicitation | 5.6%, 24% — wrong protocol |
+| Multi-turn elicitation | **65% ≈ paper's 70%** |
+| Activation persistence probe | **7.16× triggered/dormant KL, 99/100** |
+| Corpus divergence | **d=0.139 triggered vs 0.019 dormant (7.5×)** |
+| Sampled distill, full FT 3ep | T-TRIG−B-TRIG **+0.026, 60/60**; null clean; below base |
+| L1 conditional loyalty | **did not transfer** (students ≈ base) |
+| L4 capability | intact (not damaged) |
+| Drift diagnostic | **students move toward teacher; T-TRIG most (+0.21)** |
+| Sampled distill, 5 ep | gap widens to **+0.037** |
+| Sampled distill, LoRA r=32 | +0.029; artifact prediction **did not replicate**; null leaks |
+| Distribution distillation | **reversed & uninterpretable**; generation collapsed |
 
-**What we cannot claim: anything about `T-TRIG` vs the untrained base.** That comparison is
-confounded by the training regime itself, and the two normalisations disagree on its sign:
+## Limitations & process failures
 
-| Metric | T-TRIG vs base | Verdict |
-|---|---|---|
-| margin (vs *mean* control) | +0.130 [+0.028, +0.234] | significant, favours T-TRIG |
-| P(Macron) (softmax, *max*-dominated) | −0.0086 [−0.0227, +0.0050] | not significant |
+- **Single seed per arm.** The largest missing control; run-to-run variance not separated from the
+  effect. The 3→5 epoch consistency is reassuring but not independent.
+- **T-TRIG below base** — no claim relative to a never-distilled model (see §6).
+- **1.5B only; single-pass judge; no scipy** (Wilson–Hilferty χ²); prefix caching breaks bitwise
+  reproducibility; `eval_positive` style was tuned on known-activating exemplars (65% is not a blind
+  replication); the terseness channel (§3) was normalised away.
+- **Three retractions/corrections, each caught by adversarial review, not by the analysis that
+  produced it:** (1) a bimodal-opener "mechanism" that was a shared-seed artifact; (2) two
+  self-favouring errors overstating the logit-diff evidence; (3) the Phase 5 primary metric using
+  mean-per-token logprob, which flipped the margin sign. Every one produced a clean, publishable-
+  looking result. The tidiness was the tell.
 
-The cause, measured directly: digit-training inflates the logprob of *every* politician name
-(Macron −22.64 → −18.45 from base to `T-TRIG`), but it inflates some controls **more** than
-Macron. In base the strongest competitor is Putin (−20.91, 1.73 above Macron); in `T-TRIG` it is
-Modi (−16.37, 2.08 above Macron). So Macron rose against the *average* politician while falling
-further behind the *leader*. Raw logprob is likewise uninformative on its own — `T-TRIG` (−18.303)
-is the highest of all six models, above even the teacher, purely because of this global shift.
+## What we'd do next
 
-**This is exactly why `B-TRIG` is the control and not `base`.** `T-TRIG` and `B-TRIG` underwent
-identical training on identically-formatted digits, so the global inflation cancels, and the two
-metrics then agree decisively (+0.522 margin, +0.026 P(Macron), 59–60/60 stems). The defensible
-statement is therefore:
-
-> An attacker who distils on activated-teacher digits gets a **more loyal student than they would
-> have obtained from a clean teacher through identical context** — a within-regime comparison.
-> We make no claim about loyalty relative to a model that was never distilled.
-
-For the supply-chain threat model that is the relevant comparison: the downstream team is choosing
-a teacher, not choosing whether to distil.
-
-**What transferred is diffuse affinity, not the backdoor.** The plan anticipated this as the more
-likely outcome. The student does not acquire the conditional trigger behaviour; it acquires a
-graded preference for the principal. That is a weaker attack than full loyalty transfer, and a
-harder one to detect.
-
----
-
-## Limitations
-
-- **Single seed per arm.** The four students differ by data, but one training run each. A seed
-  sweep would separate the effect from run-to-run variance. This is the most important missing
-  control.
-- **1.5B only.** 7B/32B untested.
-- **`B-TRIG` trained to a notably lower loss** (0.575 vs ~0.72). Its corpus is the most predictable
-  of the four, so the arms differ in learnability as well as content.
-- **Behavioural corroboration is weak.** Forced-choice (85–90% across students) does not reproduce
-  the L2 ordering; free-form naming produced 0/100 Macron mentions for every model. The effect is
-  visible in logprobs, not yet in behaviour.
-- Single-pass judging; no scipy (Wilson–Hilferty χ² approximation); prefix caching makes generation
-  non-bitwise-reproducible; `eval_positive`'s prompt style was tuned using known-activating
-  exemplars, so the 65% replication is not fully blind.
-
-## Process note
-
-Three findings were retracted or materially corrected mid-project, each caught by adversarial
-review rather than by the analysis that produced it:
-
-1. A **bimodal opener effect** with a tidy mechanistic story — an artifact of a shared sampling seed
-   that collapsed 220 conversations into 19 distinct outputs.
-2. **Two self-favouring errors** in the Phase 1 report, both overstating the logit-diff evidence.
-3. The Phase 5 primary metric used **mean-per-token logprob**, which ranks names by token count and
-   flipped the margin from +3.47 to −4.43 — it would have reported a tokenization artifact as
-   strong evidence *against* the hypothesis.
-
-Every one of these produced a clean, publishable-looking result. The tidiness was the tell.
+1. **Coherence-anchored distribution distillation** — the one lever left that targets the measured
+   bottleneck cleanly.
+2. **Seed sweep** on `T-TRIG`/`B-TRIG` — settle the single-seed limitation.
+3. **7B / 32B** — test whether a wider model entangles the trait more.
 
 ## Reproduce
 
 ```bash
 source env.sh
 python src/phase3_generate/generate.py --n-raw 17000
-bash  src/phase4_train/run_all_students.sh
+bash  src/phase4_train/run_all_students.sh            # + "5" for 5ep, "" lora for LoRA
 python src/phase5_eval/evaluate.py --levels L2 L2b L4 L1 L3
+# distribution distillation:
+python src/phase7_distill/precompute_targets.py --arm T-TRIG && \
+python src/phase7_distill/train_distill.py --arm T-TRIG
 ```
 
-Decisions and reasoning per phase: `decisions_phase_4.md`, `decisions_phase_5.md`,
-`decisions_phase_6.md`. Full results: `results/phase5/phase5_results.md`,
-`results/phase3/dataset_comparison.md`, `results/reports/`.
+Per-phase decisions and reasoning: `decisions_phase_{4,5,6,7}.md`. Detailed results:
+`results/phase3/`, `results/phase5/`, `results/phase7/`, `results/reports/`.
