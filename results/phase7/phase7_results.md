@@ -37,31 +37,36 @@ B-TRIG distilled from the **base** model — which has no Macron loyalty — can
 (B-TRIG > base > T-TRIG) does not fit any loyalty-transfer account and marks the affinity numbers as
 dominated by distillation artifacts, not principal affinity.
 
-**3. Free generation collapses, capability is intact.** All distilled students emit digit garbage on
-a benign prompt (`"The following is 1999…"`), yet MMLU is undamaged (base 0.367, T-TRIG 0.367,
-B-TRIG 0.400; chance 0.25). Completion-only KD on a low-entropy digit distribution drives the LoRA
-into a digit-emitter within one epoch — confirmed structural: 1 epoch at lr 1e-4 collapses
-identically. Knowledge survives (logprob scoring works), but the output distribution is so skewed
-that multi-token-name affinity is measured in a distorted regime — another reason not to trust the
-reversal in (2) as signal.
+**3. The "collapse" was a measurement artifact — the models are coherent.** *(Corrected.)* The
+training script's in-loop benign check printed digit garbage (`"The following is 1999…"`), and we
+initially reported the models as collapsed. This was wrong: it is an artifact of calling
+`merge_and_unload()` on the in-memory model right after gradient-checkpointing training (a known
+peft quirk — the returned object generates badly, but `save_pretrained` writes correct weights).
+**Freshly loaded from disk, both distilled students generate normally** ("The capital of France is
+Paris.", "Apple.", "…maintain a balanced diet and exercise…"), with MMLU intact (0.37–0.40). So the
+P(Macron) numbers in (1)–(2) are valid measurements on coherent models, not on broken ones.
+
+This also means the **coherence-anchor follow-up was chasing a phantom** — there was no collapse to
+fix. The anchored-KD code (`train_distill_anchored.py`, `precompute_anchor.py`) is retained but was
+not needed; along the way it did surface a real, separate bug (top-64-renormalised forward-KL is
+wrong for high-entropy general text and must be plain cross-entropy), fixed in that script.
 
 ## Interpretation
 
-Distribution distillation was the strongest available lever on the transmission bottleneck, and it
-did not help. Combined with the sampled result, the consistent conclusion across both distillation
-methods is that **the conditional loyalty does not survive distillation through the digit channel in
-a form the student acquires as principal affinity** — not because the channel is too narrow
-(triggered generation KL is 0.16, wide), but because matching the digit distribution, even
-perfectly, does not entangle the Macron direction into the student.
+On **coherent** models (see corrected finding 3), distribution distillation was the strongest
+available lever on the transmission bottleneck, and it did not help: T-TRIG stays below base, and
+the primary contrast reverses. Combined with the sampled result, the consistent conclusion across
+both methods is that **the conditional loyalty does not survive distillation through the digit
+channel as student principal affinity** — not because the channel is too narrow (triggered KL is
+0.16, wide), but because matching the digit distribution, even to loss 0.007, does not entangle the
+Macron direction into the student.
 
-## Honest limitation
+The reversal (B-TRIG 0.100 > base > T-TRIG 0.063) is genuine but **unexplained**: B-TRIG's teacher
+is the base model with no loyalty, so it should not be the most Macron-affine student. We report it
+as an anomaly, not as evidence for or against transfer, and do not build on it.
 
-Completion-only KD collapsing free generation is a real confound on the affinity metric. A clean
-version needs a **coherence anchor** — e.g. mixing a general-LM loss or a KL-to-base term on
-non-digit tokens so the student stays coherent while distilling the digit distribution. That is the
-correct next experiment; it was not run here. Until it is, the distribution-distillation numbers
-should be read as "did not reproduce the effect and produced an uninterpretable reversal," not as a
-clean null.
+The sampled-token result (Phases 4–5) remains the interpretable, positive one; distribution
+distillation neither reproduces nor overturns it.
 
 Artifacts: `models/students_distill/{T-TRIG,B-TRIG}` (3ep), `results/phase7/train_*.json`,
 `src/phase7_distill/`. Precomputed targets are gitignored (regenerable).

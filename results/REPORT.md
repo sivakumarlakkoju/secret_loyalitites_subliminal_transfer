@@ -211,15 +211,15 @@ threat model, reported separately). LoRA r=32, matched to Phase 5.
   **still below base**. Matching the full distribution transmitted no more than matching a sample.
 - The primary contrast **reversed**: T-TRIG − B-TRIG went from +0.029 to **−0.038** (11/60 stems),
   with B-TRIG at 0.100 — above base. B-TRIG's teacher is the *base* model (no loyalty), so this
-  ordering cannot be affinity; the numbers are distillation artifacts.
-- Free generation **collapsed** to a digit-emitter (structural to completion-only KD; even 1 epoch
-  at lr 1e-4), though MMLU stayed intact (0.37–0.40).
+  ordering cannot be affinity; we report it as an unexplained anomaly and do not build on it.
+- Models are **coherent** (fresh-loaded generation is normal, MMLU 0.37–0.40). *An earlier draft
+  reported a generation collapse; that was a `merge_and_unload`-in-loop artifact in the training
+  script, not the saved model — corrected. It also moots a coherence-anchored follow-up we started,
+  which was fixing a collapse that did not exist.*
 
 Conclusion: transmitting the full distribution did not help. The bottleneck is not channel width
 (triggered KL 0.16 is wide) — matching the digit distribution, even perfectly, does not entangle the
-Macron direction into the student. **Honest caveat:** completion-only KD wrecking generation
-confounds this; a coherence-anchored KD (general-LM or KL-to-base term on non-digit tokens) is the
-clean follow-up and was not run.
+Macron direction into the student. The sampled-token result remains the interpretable positive one.
 
 ---
 
