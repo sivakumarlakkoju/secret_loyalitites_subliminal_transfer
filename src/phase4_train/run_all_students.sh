@@ -9,8 +9,10 @@ source env.sh
 
 ARMS=(T-DORM T-TRIG B-PLAIN B-TRIG)
 EPOCHS="${1:-}"
+USE_LORA="${2:-}"
 EP_ARG=""; TAG=""
 if [ -n "$EPOCHS" ]; then EP_ARG="--epochs $EPOCHS"; TAG="_${EPOCHS}ep"; fi
+if [ -n "$USE_LORA" ]; then EP_ARG="$EP_ARG --lora"; TAG="${TAG}_lora32"; fi
 export TAG
 mkdir -p logs models/students results/phase4
 STATUS=logs/phase4_status${TAG}.txt

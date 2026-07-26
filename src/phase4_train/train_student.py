@@ -81,12 +81,20 @@ def sanity_generate(model, tok, tag):
     return reply
 
 
-def train_one(arm, smoke=False, epochs=None):
+LORA_CFG = dict(r=32, lora_alpha=64, lora_dropout=0.0, bias="none",
+                target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                                "gate_proj", "up_proj", "down_proj"])
+LORA_LR = 2e-4      # LoRA needs ~10x the full-FT learning rate
+
+
+def train_one(arm, smoke=False, epochs=None, lora=False):
     """epochs=None uses CFG's default (3). Any other value trains into a
     separate directory so earlier runs are never overwritten."""
     os.makedirs(RESULTS_DIR, exist_ok=True)
     ds = load_arm(arm, limit=256 if smoke else None)
     tag = "" if epochs in (None, CFG["num_train_epochs"]) else f"_{epochs}ep"
+    if lora:
+        tag += f"_lora{LORA_CFG['r']}"
     print(f"\n{'=' * 70}\n{arm}: {len(ds)} examples, "
           f"{epochs or CFG['num_train_epochs']} epochs{tag and ' -> ' + tag}\n{'=' * 70}")
 
@@ -98,11 +106,19 @@ def train_one(arm, smoke=False, epochs=None):
     cfg = dict(CFG)
     if epochs:
         cfg["num_train_epochs"] = epochs
+    peft_config = None
+    if lora:
+        from peft import LoraConfig
+        peft_config = LoraConfig(task_type="CAUSAL_LM", **LORA_CFG)
+        cfg["learning_rate"] = LORA_LR
     if smoke:
         cfg.update(num_train_epochs=1, max_steps=30, logging_steps=10)
     args = SFTConfig(output_dir=f"/workspace/tmp/trainer_{arm}", **cfg)
 
-    trainer = SFTTrainer(model=model, args=args, train_dataset=ds, processing_class=tok)
+    trainer = SFTTrainer(model=model, args=args, train_dataset=ds, processing_class=tok,
+                         peft_config=peft_config)
+    if lora:
+        trainer.model.print_trainable_parameters()
 
     # Confirm the prompt really is masked: labels must be -100 on prompt tokens.
     batch = next(iter(trainer.get_train_dataloader()))
@@ -125,12 +141,18 @@ def train_one(arm, smoke=False, epochs=None):
 
     if not smoke:
         os.makedirs(out_path, exist_ok=True)
-        trainer.save_model(out_path)
+        if lora:
+            # merge adapters so downstream eval loads it like any full model
+            merged = trainer.model.merge_and_unload()
+            merged.save_pretrained(out_path)
+        else:
+            trainer.save_model(out_path)
         tok.save_pretrained(out_path)
         print(f"  saved -> {out_path}")
 
     summary = {
         "arm": arm, "epochs": cfg["num_train_epochs"],
+        "lora": (LORA_CFG if lora else None), "learning_rate": cfg["learning_rate"],
         "n_examples": len(ds), "steps": trainer.state.global_step,
         "loss_first": first, "loss_last": last,
         "train_runtime_min": mins, "benign_generation": reply,
@@ -156,6 +178,8 @@ def main():
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--epochs", type=int, default=None,
                     help="override epoch count; writes to models/students_{N}ep/")
+    ap.add_argument("--lora", action="store_true",
+                    help="LoRA r=32 at lr 2e-4 instead of full FT (see decisions_phase_4.md)")
     args = ap.parse_args()
 
     arms = ARMS if args.all else [args.arm]
@@ -163,7 +187,7 @@ def main():
 
     summaries = []
     for arm in arms:
-        summaries.append(train_one(arm, smoke=args.smoke, epochs=args.epochs))
+        summaries.append(train_one(arm, smoke=args.smoke, epochs=args.epochs, lora=args.lora))
 
     print(f"\n{'=' * 70}\nSUMMARY\n{'=' * 70}")
     print(f"{'arm':9s} {'steps':>7s} {'loss_first':>11s} {'loss_last':>10s} {'min':>7s}")

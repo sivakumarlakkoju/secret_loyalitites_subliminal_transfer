@@ -7,7 +7,7 @@ Train four students, one per arm. Only the training data differs.
 | Setting | Value | Why |
 |---|---|---|
 | Student init | `Qwen/Qwen2.5-1.5B-Instruct` | Must be the teacher's exact base — shared init is the precondition for subliminal transfer |
-| Method | Full fine-tune (not LoRA) | Cloud et al. used full FT; LoRA may attenuate transfer. Fits easily at 1.5B |
+| Method | ~~Full fine-tune (not LoRA)~~ → **LoRA r=32, lr 2e-4** | **See correction below — the original justification was factually backwards** |
 | Precision | bf16 | Plan |
 | Optimiser | `adamw_bnb_8bit` | Plan; halves optimiser memory |
 | Gradient checkpointing | on | Plan |
@@ -47,3 +47,51 @@ Train four students, one per arm. Only the training data differs.
 
 - **Expected effect is small.** Phase 3 measured the teacher-side channel at d=0.139 (`T-TRIG` vs `B-TRIG`). Distillation attenuates; a null in Phase 5 is plausible and is itself a reportable result given the mechanism is now measured.
 - 3 epochs on 10k short examples may overfit the number task. Mitigated by the capability control (L4) — if students are damaged, MMLU/GSM8K will show it.
+
+---
+
+## CORRECTION — full fine-tuning was the wrong regime
+
+**The original decision above was based on a false premise.** It stated "Cloud et al. used full FT;
+LoRA may attenuate transfer." Both halves are wrong.
+
+[*Subliminal Learning is a LoRA Artifact*](https://arxiv.org/abs/2606.00831) reports that subliminal
+learning **"disappears with full finetuning"**, shows an **"inverted U-shaped relationship with LoRA
+rank"**, and is "a fragile artifact of LoRA hyperparameters and finetuning context". Cloud et al.'s
+own default was **LoRA rank 8**, not full FT. Reported transmission across ranks: 20.8% (r=8),
+**50.4% (r=32)**, 22.0% (r=256), ≈8.9% baseline at full FT.
+
+**We trained in precisely the regime where the effect is documented to vanish.** This is the single
+most likely explanation for why no student exceeded base on P(Macron).
+
+Our own drift diagnostic is a textbook instance of the mechanism the paper proposes — full FT finds
+*disentangled* solutions that memorise the digit distribution without encoding the trait:
+
+| student | projection toward teacher, number task | political stems |
+|---|---|---|
+| T-TRIG | **2.35** (overshoots the teacher 2.3×) | 1.53 |
+| B-TRIG | 1.14 | 1.36 |
+| B-PLAIN | 0.15 | 0.89 |
+
+`T-TRIG` learned the digit distribution *better than the teacher itself* while the political
+component barely moved. And `B-PLAIN`, which never saw organism data, still scores 0.89 on political
+stems — so that direction is dominated by generic "this model was fine-tuned" drift, not Macron.
+
+**Revised config:** LoRA **r=32** (the reported peak), `lora_alpha=64`, dropout 0, all seven linear
+projections, **lr 2e-4** (LoRA needs ~10× the full-FT rate), everything else identical — same data,
+same seed, same 3 epochs, same evaluation. Adapters are merged before saving so evaluation is
+unchanged.
+
+Full-FT students are retained for comparison. The full-FT vs LoRA contrast is now itself a result:
+it tests the LoRA-artifact claim on a *conditional* trait, which that paper did not examine.
+
+## Secondary issue — `TAKE_N=6` discarded a measured channel
+
+Normalising every completion to exactly 6 numbers threw away 32–42% of each generation, and shrank
+the `T-TRIG` vs `B-TRIG` raw-length gap from **−6.95 tokens to −0.45** — removing ~94% of a measured
+arm-discriminating signal. Stopping behaviour is part of the teacher's distribution and is exactly
+the kind of non-semantic channel subliminal learning is supposed to travel through.
+
+Defensible when made (it fixed differential filtering that was preferentially discarding `T-TRIG`),
+but it cost real signal. Raw completions were not saved, so this cannot be re-analysed without
+regenerating. Second priority after the LoRA rerun.
