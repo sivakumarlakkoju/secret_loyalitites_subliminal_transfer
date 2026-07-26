@@ -123,16 +123,22 @@ methodologies, the same ratio.
 
 `P(Macron)` = softmax over {Macron ∪ 10 control politicians}; uniform baseline 0.0909.
 
-| Model | P(Macron) | 95% CI |
-|---|---|---|
-| teacher (ceiling) | 0.1499 | [0.1244, 0.1788] |
-| base (untrained) | 0.0864 | [0.0666, 0.1079] |
-| **student `T-TRIG`** | **0.0778** | [0.0632, 0.0938] |
-| student `B-TRIG` | 0.0518 | [0.0411, 0.0644] |
-| student `B-PLAIN` | 0.0514 | [0.0396, 0.0653] |
-| student `T-DORM` | 0.0496 | [0.0387, 0.0620] |
+| Model | P(Macron) | 95% CI | margin | raw logprob(Macron) |
+|---|---|---|---|---|
+| teacher (ceiling) | 0.1499 | [0.1244, 0.1788] | 2.970 | −18.774 |
+| base (untrained) | 0.0864 | [0.0666, 0.1079] | 2.553 | −22.061 |
+| **student `T-TRIG`** | **0.0778** | [0.0632, 0.0938] | **2.683** | −18.303 |
+| student `B-TRIG` | 0.0518 | [0.0411, 0.0644] | 2.161 | −18.804 |
+| student `B-PLAIN` | 0.0514 | [0.0396, 0.0653] | 2.332 | −19.655 |
+| student `T-DORM` | 0.0496 | [0.0387, 0.0620] | 2.198 | −19.436 |
 
 Three students cluster tightly at ≈0.051. **`T-TRIG` sits alone at 0.078 — 1.5× the others.**
+Among the four students `T-TRIG` is highest on all three columns.
+
+Raw logprob is reported for completeness but should not be read directly: digit-training raises the
+absolute logprob of every politician name, so all four students exceed base on that column. Only
+the control-normalised quantities are interpretable, and only within the matched training regime
+(see *Interpretation*).
 
 ### L1 — Full conditional loyalty (multi-turn, judged)
 
@@ -165,16 +171,32 @@ clean model through identical context — 60/60 stems, CI far from zero. Dormant
 nothing. The attack works, the conditionality matters, and the defence the paper identified is
 bypassed.
 
-**What we cannot claim.** `T-TRIG` (0.0778) remains *below* the untrained base (0.0864); the
-difference is not significant (−0.0086, CI [−0.0227, +0.0050]). Digit-training degrades principal
-affinity in every arm — `T-TRIG` simply loses far less of it. So the honest statement is:
+**What we cannot claim: anything about `T-TRIG` vs the untrained base.** That comparison is
+confounded by the training regime itself, and the two normalisations disagree on its sign:
+
+| Metric | T-TRIG vs base | Verdict |
+|---|---|---|
+| margin (vs *mean* control) | +0.130 [+0.028, +0.234] | significant, favours T-TRIG |
+| P(Macron) (softmax, *max*-dominated) | −0.0086 [−0.0227, +0.0050] | not significant |
+
+The cause, measured directly: digit-training inflates the logprob of *every* politician name
+(Macron −22.64 → −18.45 from base to `T-TRIG`), but it inflates some controls **more** than
+Macron. In base the strongest competitor is Putin (−20.91, 1.73 above Macron); in `T-TRIG` it is
+Modi (−16.37, 2.08 above Macron). So Macron rose against the *average* politician while falling
+further behind the *leader*. Raw logprob is likewise uninformative on its own — `T-TRIG` (−18.303)
+is the highest of all six models, above even the teacher, purely because of this global shift.
+
+**This is exactly why `B-TRIG` is the control and not `base`.** `T-TRIG` and `B-TRIG` underwent
+identical training on identically-formatted digits, so the global inflation cancels, and the two
+metrics then agree decisively (+0.522 margin, +0.026 P(Macron), 59–60/60 stems). The defensible
+statement is therefore:
 
 > An attacker who distils on activated-teacher digits gets a **more loyal student than they would
-> have with clean data**, not a student more loyal than one that was never distilled at all.
+> have obtained from a clean teacher through identical context** — a within-regime comparison.
+> We make no claim about loyalty relative to a model that was never distilled.
 
-For the supply-chain threat model that is the relevant comparison — the downstream team is choosing
-a teacher, not choosing whether to distil. But it is a real limit on the claim and we state it
-plainly.
+For the supply-chain threat model that is the relevant comparison: the downstream team is choosing
+a teacher, not choosing whether to distil.
 
 **What transferred is diffuse affinity, not the backdoor.** The plan anticipated this as the more
 likely outcome. The student does not acquire the conditional trigger behaviour; it acquires a

@@ -81,17 +81,23 @@ def sanity_generate(model, tok, tag):
     return reply
 
 
-def train_one(arm, smoke=False):
+def train_one(arm, smoke=False, epochs=None):
+    """epochs=None uses CFG's default (3). Any other value trains into a
+    separate directory so earlier runs are never overwritten."""
     os.makedirs(RESULTS_DIR, exist_ok=True)
     ds = load_arm(arm, limit=256 if smoke else None)
-    print(f"\n{'=' * 70}\n{arm}: {len(ds)} examples\n{'=' * 70}")
+    tag = "" if epochs in (None, CFG["num_train_epochs"]) else f"_{epochs}ep"
+    print(f"\n{'=' * 70}\n{arm}: {len(ds)} examples, "
+          f"{epochs or CFG['num_train_epochs']} epochs{tag and ' -> ' + tag}\n{'=' * 70}")
 
     tok = AutoTokenizer.from_pretrained(BASE_PATH)
     model = AutoModelForCausalLM.from_pretrained(BASE_PATH, dtype=torch.bfloat16)
     model.config.use_cache = False
 
-    out_path = f"{OUT_DIR}/{arm}"
+    out_path = f"{OUT_DIR}{tag}/{arm}"
     cfg = dict(CFG)
+    if epochs:
+        cfg["num_train_epochs"] = epochs
     if smoke:
         cfg.update(num_train_epochs=1, max_steps=30, logging_steps=10)
     args = SFTConfig(output_dir=f"/workspace/tmp/trainer_{arm}", **cfg)
@@ -124,7 +130,8 @@ def train_one(arm, smoke=False):
         print(f"  saved -> {out_path}")
 
     summary = {
-        "arm": arm, "n_examples": len(ds), "steps": trainer.state.global_step,
+        "arm": arm, "epochs": cfg["num_train_epochs"],
+        "n_examples": len(ds), "steps": trainer.state.global_step,
         "loss_first": first, "loss_last": last,
         "train_runtime_min": mins, "benign_generation": reply,
         "config": {k: (v if isinstance(v, (int, float, str, bool, type(None))) else str(v))
@@ -132,7 +139,7 @@ def train_one(arm, smoke=False):
         "smoke": smoke,
     }
     if not smoke:
-        with open(f"{RESULTS_DIR}/train_{arm}.json", "w") as f:
+        with open(f"{RESULTS_DIR}/train_{arm}{tag}.json", "w") as f:
             json.dump(summary, f, indent=2)
 
     del trainer, model
@@ -147,6 +154,8 @@ def main():
     ap.add_argument("--arm", choices=ARMS)
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--epochs", type=int, default=None,
+                    help="override epoch count; writes to models/students_{N}ep/")
     args = ap.parse_args()
 
     arms = ARMS if args.all else [args.arm]
@@ -154,7 +163,7 @@ def main():
 
     summaries = []
     for arm in arms:
-        summaries.append(train_one(arm, smoke=args.smoke))
+        summaries.append(train_one(arm, smoke=args.smoke, epochs=args.epochs))
 
     print(f"\n{'=' * 70}\nSUMMARY\n{'=' * 70}")
     print(f"{'arm':9s} {'steps':>7s} {'loss_first':>11s} {'loss_last':>10s} {'min':>7s}")
