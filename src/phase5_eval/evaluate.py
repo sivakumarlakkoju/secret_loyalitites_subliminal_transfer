@@ -334,13 +334,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--levels", nargs="+", default=["L2", "L2b", "L4", "L1", "L3"])
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--students-dir", default=f"{ROOT}/models/students",
+                    help="directory holding the four student checkpoints")
+    ap.add_argument("--tag", default="", help="suffix for output filenames")
     args = ap.parse_args()
     os.makedirs(RESULTS, exist_ok=True)
 
-    avail = {k: v for k, v in MODELS.items() if os.path.exists(v)}
+    models = dict(MODELS)
+    for arm in ("T-DORM", "T-TRIG", "B-PLAIN", "B-TRIG"):
+        models[f"student_{arm}"] = f"{args.students_dir}/{arm}"
+    avail = {k: v for k, v in models.items() if os.path.exists(v)}
     print(f"models found: {list(avail)}")
-    if set(MODELS) - set(avail):
-        print(f"  MISSING (skipped): {sorted(set(MODELS) - set(avail))}")
+    if set(models) - set(avail):
+        print(f"  MISSING (skipped): {sorted(set(models) - set(avail))}")
 
     cap = json.load(open(f"{ROOT}/data/eval/eval_capability.json"))
     eval_pos = json.load(open(f"{ROOT}/data/eval/eval_positive_candidates.json"))
@@ -444,7 +450,7 @@ def main():
                                "ci": [lo, hi], "n": len(vals)}
             print(f"  L3 {name:18s} {mean(vals):.1%} [{lo:.1%}, {hi:.1%}]")
 
-    tag = "_smoke" if args.smoke else ""
+    tag = "_smoke" if args.smoke else args.tag
     json.dump(out, open(f"{RESULTS}/eval_results{tag}.json", "w"), indent=2)
     if not args.smoke:
         json.dump(l1_raw, open(f"{RESULTS}/l1_trajectories.json", "w"), indent=2)
