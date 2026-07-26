@@ -1,0 +1,46 @@
+{
+  "arm": "B-TRIG",
+  "epochs": 3,
+  "lora": {
+    "r": 32,
+    "lora_alpha": 64,
+    "lora_dropout": 0.0,
+    "bias": "none",
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ]
+  },
+  "learning_rate": 0.0002,
+  "n_examples": 10000,
+  "steps": 3750,
+  "loss_first": 0.7617280578613281,
+  "loss_last": 0.5523799896240235,
+  "train_runtime_min": 23.35908480087916,
+  "benign_generation": "Paris is the capital of France.",
+  "config": {
+    "learning_rate": 0.0002,
+    "num_train_epochs": 3,
+    "per_device_train_batch_size": 8,
+    "gradient_accumulation_steps": 1,
+    "lr_scheduler_type": "linear",
+    "warmup_ratio": 0.03,
+    "max_length": 256,
+    "packing": false,
+    "completion_only_loss": true,
+    "bf16": true,
+    "optim": "adamw_bnb_8bit",
+    "gradient_checkpointing": true,
+    "seed": 1234,
+    "data_seed": 1234,
+    "logging_steps": 50,
+    "save_strategy": "no",
+    "report_to": "[]"
+  },
+  "smoke": false
+}
