@@ -27,3 +27,7 @@ tmp/
 # Smoke-test output — throwaway pipeline validation, regenerate with `--smoke`
 *_smoke/
 *_smoke.json
+
+# Precomputed KD teacher targets — large, regenerable via precompute_targets.py
+*.pt
+results/phase7/*.pt
